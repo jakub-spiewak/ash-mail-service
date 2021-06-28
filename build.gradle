@@ -1,0 +1,51 @@
+plugins {
+    id 'org.springframework.boot' version '2.5.1'
+    id 'io.spring.dependency-management' version '1.0.11.RELEASE'
+    id 'java'
+}
+
+group = 'com.jakubspiewak'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = '16'
+
+configurations {
+
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+repositories {
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/jakub-spiewak/ash-libs")
+            credentials {
+                username = System.getenv("GITHUB_USERNAME") ?: project.findProperty("GITHUB_USERNAME")
+                password = System.getenv("GITHUB_TOKEN") ?: project.findProperty("GITHUB_TOKEN")
+            }
+        }
+    }
+    mavenCentral()
+}
+
+dependencies {
+    // ash
+    implementation 'com.jakubspiewak:ash-api-model-lib:0.0.1.5-SNAPSHOT'
+
+    // spring
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+
+    // mail
+    implementation 'org.jodd:jodd-mail:6.0.5'
+
+    implementation 'jakarta.mail:jakarta.mail-api:1.6.5'
+    implementation 'com.sun.mail:jakarta.mail:1.6.5'
+
+    // lombok
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    implementation 'org.springdoc:springdoc-openapi-ui:1.5.2'
+}
