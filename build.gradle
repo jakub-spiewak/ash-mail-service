@@ -19,7 +19,7 @@ repositories {
     repositories {
         maven {
             name = "GitHubPackages"
-            url = uri("https://maven.pkg.github.com/jakub-spiewak/ash-libs")
+            url = uri("https://maven.pkg.github.com/jakubspiewak-ash/ash-libs")
             credentials {
                 username = System.getenv("GITHUB_USERNAME") ?: project.findProperty("GITHUB_USERNAME")
                 password = System.getenv("GITHUB_TOKEN") ?: project.findProperty("GITHUB_TOKEN")
