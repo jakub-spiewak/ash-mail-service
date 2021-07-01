@@ -15,27 +15,22 @@ import java.util.stream.Stream;
 import static java.lang.System.currentTimeMillis;
 import static java.util.Optional.ofNullable;
 import static java.util.stream.Collectors.toList;
-import static jodd.mail.EmailFilter.Operator.GE;
-import static jodd.mail.EmailFilter.Operator.LE;
-import static jodd.mail.EmailFilter.Operator.LT;
+import static jodd.mail.EmailFilter.Operator.*;
 import static jodd.mail.EmailFilter.filter;
 
-@Service
 @Slf4j
+@Service
 public class MailServiceImpl implements MailService {
     private static final String INBOX_FOLDER_NAME = "INBOX";
 
     @Override
-    public List<ApiReceiveMailResponse> receiveMail(
-            final ApiReceiveMailRequest request,
-            final ApiReceiveMailQueryParams query
-    ) {
+    public List<ApiFetchMailResponse> fetchMail(final ApiFetchMailRequest request) {
         final var session = getImapServer(request.getConfiguration()).createSession();
 
         session.open();
         session.useFolder(INBOX_FOLDER_NAME);
 
-        final var filter = createMailsFilter(query);
+        final var filter = createMailsFilter(request.getQuery());
         final var receivedEmailStream = Stream.of(session.receiveEmail(filter));
 
         session.close();
@@ -45,14 +40,20 @@ public class MailServiceImpl implements MailService {
                 .collect(toList());
     }
 
-    private EmailFilter createMailsFilter(ApiReceiveMailQueryParams query) {
+    private EmailFilter createMailsFilter(MailQueryParams query) {
         final var filter = createDefaultFilter();
-        ofNullable(query.getFrom()).ifPresent(froms -> froms.forEach(filter.or()::from));
+        final var fromFilter = filter().or();
 
-        final var maxDate = getDateAsOptional(query, DateRange::getMax);
+        // TODO: should be better approach
+        ofNullable(query.getFrom()).ifPresent(froms -> {
+            froms.forEach(fromFilter::from);
+            if (!froms.isEmpty()) filter.and(fromFilter);
+        });
+
+        final var maxDate = getOptionalDate(query, DateRange::getMax);
         maxDate.ifPresent(date -> filter.and().sentDate(LE, date.getTime()));
 
-        final var minDate = getDateAsOptional(query, DateRange::getMin);
+        final var minDate = getOptionalDate(query, DateRange::getMin);
         minDate.ifPresent(date -> filter.and().sentDate(GE, date.getTime()));
 
         return filter;
@@ -62,8 +63,8 @@ public class MailServiceImpl implements MailService {
         return filter().and().sentDate(LT, currentTimeMillis());
     }
 
-    private static ApiReceiveMailResponse mapReceivedMailToResponse(ReceivedEmail source) {
-        return ApiReceiveMailResponse.builder()
+    private static ApiFetchMailResponse mapReceivedMailToResponse(ReceivedEmail source) {
+        return ApiFetchMailResponse.builder()
                 .from(source.from().getEmail())
                 .subject(source.subject())
                 .receiptDate(source.sentDate())
@@ -82,7 +83,7 @@ public class MailServiceImpl implements MailService {
                 .build();
     }
 
-    private static Optional<Date> getDateAsOptional(ApiReceiveMailQueryParams query, Function<DateRange, Date> mapper) {
+    private static Optional<Date> getOptionalDate(MailQueryParams query, Function<DateRange, Date> mapper) {
         return ofNullable(query.getDate()).map(mapper);
     }
 

@@ -1,8 +1,7 @@
 package com.jakubspiewak.ashmailservice.mail;
 
-import com.jakubspiewak.ashapimodellib.model.mail.ApiReceiveMailQueryParams;
-import com.jakubspiewak.ashapimodellib.model.mail.ApiReceiveMailRequest;
-import com.jakubspiewak.ashapimodellib.model.mail.ApiReceiveMailResponse;
+import com.jakubspiewak.ashapimodellib.model.mail.ApiFetchMailRequest;
+import com.jakubspiewak.ashapimodellib.model.mail.ApiFetchMailResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -23,12 +22,9 @@ public class MailController {
 
     private final MailService mailService;
 
-    @PostMapping("/receive")
-    public ResponseEntity<List<ApiReceiveMailResponse>> getMails(
-            @RequestBody(required = false) ApiReceiveMailRequest request,
-            ApiReceiveMailQueryParams query
-    ) {
-        final var response = mailService.receiveMail(request, query);
+    @PostMapping("/fetch")
+    public ResponseEntity<List<ApiFetchMailResponse>> getMails(@RequestBody ApiFetchMailRequest request) {
+        final var response = mailService.fetchMail(request);
 
         return ResponseEntity
                 .status(OK)

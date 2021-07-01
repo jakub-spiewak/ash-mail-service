@@ -31,7 +31,7 @@ repositories {
 
 dependencies {
     // ash
-    implementation 'com.jakubspiewak:ash-api-model-lib:0.0.1.5-SNAPSHOT'
+    implementation 'com.jakubspiewak:ash-api-model-lib:0.0.1.7-SNAPSHOT'
 
     // spring
     implementation 'org.springframework.boot:spring-boot-starter-web'
