@@ -17,6 +17,7 @@ import static java.util.Optional.ofNullable;
 import static java.util.stream.Collectors.toList;
 import static jodd.mail.EmailFilter.Operator.GE;
 import static jodd.mail.EmailFilter.Operator.LE;
+import static jodd.mail.EmailFilter.Operator.LT;
 import static jodd.mail.EmailFilter.filter;
 
 @Service
@@ -45,7 +46,7 @@ public class MailServiceImpl implements MailService {
     }
 
     private EmailFilter createMailsFilter(ApiReceiveMailQueryParams query) {
-        final var filter = filter().and().sentDate(LE, currentTimeMillis());
+        final var filter = createDefaultFilter();
         ofNullable(query.getFrom()).ifPresent(froms -> froms.forEach(filter.or()::from));
 
         final var maxDate = getDateAsOptional(query, DateRange::getMax);
@@ -55,6 +56,10 @@ public class MailServiceImpl implements MailService {
         minDate.ifPresent(date -> filter.and().sentDate(GE, date.getTime()));
 
         return filter;
+    }
+
+    private EmailFilter createDefaultFilter() {
+        return filter().and().sentDate(LT, currentTimeMillis());
     }
 
     private static ApiReceiveMailResponse mapReceivedMailToResponse(ReceivedEmail source) {
