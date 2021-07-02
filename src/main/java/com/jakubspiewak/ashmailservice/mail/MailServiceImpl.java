@@ -1,8 +1,16 @@
 package com.jakubspiewak.ashmailservice.mail;
 
-import com.jakubspiewak.ashapimodellib.model.mail.*;
+import com.jakubspiewak.ashapimodellib.model.mail.ApiFetchMailRequest;
+import com.jakubspiewak.ashapimodellib.model.mail.ApiFetchMailResponse;
+import com.jakubspiewak.ashapimodellib.model.mail.MailAttachment;
+import com.jakubspiewak.ashapimodellib.model.mail.MailConfiguration;
+import com.jakubspiewak.ashapimodellib.model.mail.MailQueryParams;
 import com.jakubspiewak.ashapimodellib.model.util.DateRange;
-import jodd.mail.*;
+import jodd.mail.EmailAttachment;
+import jodd.mail.EmailFilter;
+import jodd.mail.ImapServer;
+import jodd.mail.MailServer;
+import jodd.mail.ReceivedEmail;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -15,7 +23,9 @@ import java.util.stream.Stream;
 import static java.lang.System.currentTimeMillis;
 import static java.util.Optional.ofNullable;
 import static java.util.stream.Collectors.toList;
-import static jodd.mail.EmailFilter.Operator.*;
+import static jodd.mail.EmailFilter.Operator.GE;
+import static jodd.mail.EmailFilter.Operator.LE;
+import static jodd.mail.EmailFilter.Operator.LT;
 import static jodd.mail.EmailFilter.filter;
 
 @Slf4j
