@@ -97,6 +97,7 @@ public class MailServiceImpl implements MailService {
         return ofNullable(query.getDate()).map(mapper);
     }
 
+    // TODO: add support for others like POP3
     private static ImapServer getImapServer(MailConfiguration config) {
         return MailServer.create()
                 .host(config.getHost())
