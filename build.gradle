@@ -1,5 +1,5 @@
 plugins {
-    id 'org.springframework.boot' version '2.5.1'
+    id 'org.springframework.boot' version '2.5.2'
     id 'io.spring.dependency-management' version '1.0.11.RELEASE'
     id 'java'
 }
@@ -8,8 +8,11 @@ group = 'com.jakubspiewak'
 version = '0.0.1-SNAPSHOT'
 sourceCompatibility = '16'
 
-configurations {
+ext {
+    set('springCloudVersion', "2020.0.3")
+}
 
+configurations {
     compileOnly {
         extendsFrom annotationProcessor
     }
@@ -34,6 +37,7 @@ dependencies {
     implementation 'com.jakubspiewak:ash-api-model-lib:0.0.1.7-SNAPSHOT'
 
     // spring
+    implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-server'
     implementation 'org.springframework.boot:spring-boot-starter-web'
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
 
@@ -48,4 +52,10 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok'
 
     implementation 'org.springdoc:springdoc-openapi-ui:1.5.2'
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+    }
 }
