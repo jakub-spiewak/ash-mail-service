@@ -1,20 +1,14 @@
 package com.jakubspiewak.ashmailservice.mail;
 
-import com.jakubspiewak.ashapimodellib.model.mail.ApiFetchMailRequest;
-import com.jakubspiewak.ashapimodellib.model.mail.ApiFetchMailResponse;
-import com.jakubspiewak.ashapimodellib.model.mail.MailAttachment;
-import com.jakubspiewak.ashapimodellib.model.mail.MailConfiguration;
-import com.jakubspiewak.ashapimodellib.model.mail.MailQueryParams;
+import com.jakubspiewak.ashapimodellib.model.mail.*;
 import com.jakubspiewak.ashapimodellib.model.util.DateRange;
-import jodd.mail.EmailAttachment;
-import jodd.mail.EmailFilter;
-import jodd.mail.ImapServer;
-import jodd.mail.MailServer;
-import jodd.mail.ReceivedEmail;
+import jodd.mail.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.util.Date;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
@@ -23,88 +17,90 @@ import java.util.stream.Stream;
 import static java.lang.System.currentTimeMillis;
 import static java.util.Optional.ofNullable;
 import static java.util.stream.Collectors.toList;
-import static jodd.mail.EmailFilter.Operator.GE;
-import static jodd.mail.EmailFilter.Operator.LE;
-import static jodd.mail.EmailFilter.Operator.LT;
+import static jodd.mail.EmailFilter.Operator.*;
 import static jodd.mail.EmailFilter.filter;
 
 @Slf4j
 @Service
 public class MailServiceImpl implements MailService {
-    private static final String INBOX_FOLDER_NAME = "INBOX";
+  private static final String INBOX_FOLDER_NAME = "INBOX";
 
-    @Override
-    public List<ApiFetchMailResponse> fetchMail(final ApiFetchMailRequest request) {
-        final var session = getImapServer(request.getConfiguration()).createSession();
+  private static ApiFetchMailResponse mapReceivedMailToResponse(ReceivedEmail source) {
+    return ApiFetchMailResponse.builder()
+        .from(source.from().getEmail())
+        .subject(source.subject())
+        .receiptDate(source.sentDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate())
+        .attachments(
+            source.attachments().stream()
+                .map(MailServiceImpl::mapEmailAttachmentsToResponseType)
+                .collect(toList()))
+        .build();
+  }
 
-        session.open();
-        session.useFolder(INBOX_FOLDER_NAME);
+  private static MailAttachment mapEmailAttachmentsToResponseType(EmailAttachment<?> source) {
+    return MailAttachment.builder().name(source.getName()).content(source.toByteArray()).build();
+  }
 
-        final var filter = createMailsFilter(request.getQuery());
-        final var receivedEmailStream = Stream.of(session.receiveEmail(filter));
+  private static Optional<LocalDate> getOptionalDate(
+      MailQueryParams query, Function<DateRange, LocalDate> mapper) {
+    return ofNullable(query.getDate()).map(mapper);
+  }
 
-        session.close();
+  // TODO: add support for others like POP3
+  private static ImapServer getImapServer(MailConfiguration config) {
+    return MailServer.create()
+        .host(config.getHost())
+        .port(config.getPort())
+        .ssl(true)
+        .auth(config.getMailAddress(), config.getPassword())
+        .buildImapMailServer();
+  }
 
-        return receivedEmailStream
-                .map(MailServiceImpl::mapReceivedMailToResponse)
-                .collect(toList());
-    }
+  @Override
+  public List<ApiFetchMailResponse> fetchMail(final ApiFetchMailRequest request) {
+    final var session = getImapServer(request.getConfiguration()).createSession();
 
-    private EmailFilter createMailsFilter(MailQueryParams query) {
-        final var filter = createDefaultFilter();
-        final var fromFilter = filter().or();
+    session.open();
+    session.useFolder(INBOX_FOLDER_NAME);
 
-        // TODO: should be better approach
-        ofNullable(query.getFrom()).ifPresent(froms -> {
-            froms.forEach(fromFilter::from);
-            if (!froms.isEmpty()) filter.and(fromFilter);
-        });
+    final var filter = createMailsFilter(request.getQuery());
+    final var receivedEmailStream = Stream.of(session.receiveEmail(filter));
 
-        final var maxDate = getOptionalDate(query, DateRange::getMax);
-        maxDate.ifPresent(date -> filter.and().sentDate(LE, date.getTime()));
+    session.close();
 
-        final var minDate = getOptionalDate(query, DateRange::getMin);
-        minDate.ifPresent(date -> filter.and().sentDate(GE, date.getTime()));
+    return receivedEmailStream.map(MailServiceImpl::mapReceivedMailToResponse).collect(toList());
+  }
 
-        return filter;
-    }
+  private EmailFilter createMailsFilter(MailQueryParams query) {
+    final var filter = createDefaultFilter();
+    final var fromFilter = filter().or();
 
-    private EmailFilter createDefaultFilter() {
-        return filter().and().sentDate(LT, currentTimeMillis());
-    }
+    // TODO: should be better approach
+    ofNullable(query.getFrom())
+        .ifPresent(
+            froms -> {
+              froms.forEach(fromFilter::from);
+              if (!froms.isEmpty()) filter.and(fromFilter);
+            });
 
-    private static ApiFetchMailResponse mapReceivedMailToResponse(ReceivedEmail source) {
-        return ApiFetchMailResponse.builder()
-                .from(source.from().getEmail())
-                .subject(source.subject())
-                .receiptDate(source.sentDate())
-                .attachments(source.attachments()
-                        .stream()
-                        .map(MailServiceImpl::mapEmailAttachmentsToResponseType)
-                        .collect(toList())
-                )
-                .build();
-    }
+    final var maxDate = getOptionalDate(query, DateRange::getMax);
+    maxDate.ifPresent(
+        date ->
+            filter
+                .and()
+                .sentDate(LE, date.atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli()));
 
-    private static MailAttachment mapEmailAttachmentsToResponseType(EmailAttachment<?> source) {
-        return MailAttachment.builder()
-                .name(source.getName())
-                .content(source.toByteArray())
-                .build();
-    }
+    final var minDate = getOptionalDate(query, DateRange::getMin);
+    minDate.ifPresent(
+        date ->
+            filter
+                .and()
+                .sentDate(GE, date.atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli()));
 
-    private static Optional<Date> getOptionalDate(MailQueryParams query, Function<DateRange, Date> mapper) {
-        return ofNullable(query.getDate()).map(mapper);
-    }
+    return filter;
+  }
 
-    // TODO: add support for others like POP3
-    private static ImapServer getImapServer(MailConfiguration config) {
-        return MailServer.create()
-                .host(config.getHost())
-                .port(config.getPort())
-                .ssl(true)
-                .auth(config.getMailAddress(), config.getPassword())
-                .buildImapMailServer();
-    }
+  private EmailFilter createDefaultFilter() {
+    return filter().and().sentDate(LT, currentTimeMillis());
+  }
 }
-

@@ -34,7 +34,7 @@ repositories {
 
 dependencies {
     // ash
-    implementation 'com.jakubspiewak:ash-api-model-lib:0.0.1.7-SNAPSHOT'
+    implementation 'com.jakubspiewak:ash-api-model-lib:0.0.1.21-SNAPSHOT'
 
     // spring
     implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-server'
